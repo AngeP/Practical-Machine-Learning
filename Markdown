@@ -1,0 +1,88 @@
+---
+title: 'Practical Machine Learning: Write Up'
+author: "AngeP"
+date: "September 26, 2015"
+output: html_document
+---
+#Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases. 
+
+1. Your submission should consist of a link to a Github repo with your R markdown and compiled HTML file describing your analysis. Please constrain the text of the writeup to < 2000 words and the number of figures to be less than 5. It will make it easier for the graders if you submit a repo with a gh-pages branch so the HTML page can be viewed online (and you always want to make it easy on graders :-).
+2. You should also apply your machine learning algorithm to the 20 test cases available in the test data above. Please submit your predictions in appropriate format to the programming assignment for automated grading. See the programming assignment for additional details. 
+
+#Write Up
+Below is just to call the packages needed
+```{r}
+library(curl)
+library(caret)
+library(ggplot2)
+library(lattice)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+```
+
+
+Calling training and testing data.  Including removing NAs
+
+```{r}
+set.seed(1234)
+training <- read.csv("C:/Users/Angela/Documents/Cousera/Course8-Machine Learning/Write Up/pml-training.csv", na.strings=c("NA","#DIV/0!", ""))
+trainingx <- training[,colSums(is.na(training)) == 0]
+
+testing <- read.csv("C:/Users/Angela/Documents/Cousera/Course8-Machine Learning/Write Up/pml-testing.csv", na.strings=c("NA","#DIV/0!", ""))
+testingx <- testing[,colSums(is.na(testing)) == 0]
+
+trainingx   <-trainingx[,-c(1:7)]
+testingx <-testingx[,-c(1:7)]
+
+trainingx$classe <- as.factor(trainingx$classe)
+```
+
+Apply cross validation by spliting the data between training and test datasets. below the training data is split.
+Training is 0.6 and testing is 0.4
+```{r}
+
+inTrain <- createDataPartition(y=trainingx$classe, p=0.6, list=FALSE)
+training1 <- trainingx[inTrain,]
+testing1 <- trainingx[-inTrain,]
+
+```
+
+#Testing decision trees and random foresting predictions with confusion matrix
+
+## Decision Trees
+Creating the decision tree model with rpart, predict to classe and then use a confusion matrix to test accuracy
+```{r}
+decisionM <- rpart(classe ~ ., data=training1, method="class")
+decisionMp <- predict(decisionM, testing1, type = "class")
+confusionMatrix(decisionMp, testing1$classe)
+```
+
+With the results from the confusion matrix there is an accuracy of 0.9997 and a 95% CI of (0.9991,1)
+
+##Random Forests
+Creating the random forest model, predict to classe and then use a confusion matrix to test accuracy
+```{r}
+rfM <- randomForest(classe ~. , data=training1, method="class")
+rfMp <- predict(rfM, testing1, type = "class")
+confusionMatrix(rfMp, testing1$classe)
+```
+
+Random forests model has an accurancy of 1 and a CI of (0.9995,1).  Hence the random forests test better than the decision tree model and will be used in the testing data prediction.
+```{r}
+prediction <- predict(rfM, testingx, type="class")
+prediction
+```
+
+
+#submission
+```{r}
+submit <- data.frame(problem_id = testingx$problem_id, classe = prediction)
+write.csv(submit, file = "coursera-submission.csv", row.names = FALSE)
+```
+
+
